@@ -682,6 +682,10 @@ function renderPanel(){
         <div>
           <div class="panel-title">${def.name}</div>
           <div class="panel-desc">${def.desc}</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <button class="add-btn" id="addStudentBtn">＋ Tambah Santri</button>
+            <button class="add-btn" id="addManyBtn" style="background:var(--navy-light);">＋＋ Tambah Beberapa Sekaligus</button>
+          </div>
         </div>
         <div class="field-row">
           <div>Guru / Musyrif Pengampu
@@ -714,10 +718,6 @@ function renderPanel(){
         </table>
       </div>
       <div class="panel-foot">
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="add-btn" id="addStudentBtn">＋ Tambah Santri</button>
-          <button class="add-btn" id="addManyBtn" style="background:var(--navy-light);">＋＋ Tambah Beberapa Sekaligus</button>
-        </div>
         <div class="panel-stats">${sum.count} santri · rata-rata capaian <b>${sum.avg}%</b> · ${sum.counts['Lancar']} lancar · ${sum.counts['Perlu Bimbingan']} perlu bimbingan</div>
       </div>
     </div>
