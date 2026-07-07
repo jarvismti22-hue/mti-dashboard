@@ -424,6 +424,8 @@
       <button class="dock-btn btn-pdf" id="btnPDF">📄 Unduh Laporan PDF</button>
       <button class="dock-btn btn-mail" id="btnMail">✉️ Kirim Laporan melalui Surel</button>
       <button class="dock-btn" id="btnBackup" style="background:var(--muted);">💾 Cadangkan Semua Data</button>
+      <button class="dock-btn" id="btnRestore" style="background:var(--warn);">📤 Pulihkan dari Cadangan</button>
+      <input type="file" id="restoreFileInput" accept="application/json" style="display:none;">
     </div>
   </div>
   <div class="save-note" id="saveNote">Data santri tersimpan otomatis dan tetap ada walau Anda keluar atau menutup halaman ini. Setiap laporan yang dikirim hanya memuat data kelas yang sedang dibuka.</div>
@@ -643,7 +645,7 @@ function renderPanel(){
   const host = document.getElementById('panelHost');
 
   const rowsHtml = prog.students.map((s,idx)=>`
-    <tr data-id="${s.id}">
+    <tr data-id="${s.id}" data-nama="${escapeAttr((s.namaId||'').toLowerCase())}">
       <td class="col-no">${idx+1}</td>
       <td><input type="text" data-field="namaId" value="${escapeAttr(s.namaId)}" placeholder="Nama Indonesia"></td>
       <td><input type="text" class="arabic-input" data-field="namaAr" value="${escapeAttr(s.namaAr)}" placeholder="الاسم"></td>
@@ -685,6 +687,9 @@ function renderPanel(){
           <div>Guru / Musyrif Pengampu
             <input id="guruInput" value="${escapeAttr(prog.guru)}" placeholder="Nama guru / musyrif">
           </div>
+          <div>Cari Santri
+            <input id="searchInput" placeholder="Ketik nama santri…">
+          </div>
         </div>
       </div>
       <div style="overflow-x:auto;">
@@ -720,6 +725,12 @@ function renderPanel(){
 
   document.getElementById('guruInput').addEventListener('input', e=>{
     prog.guru = e.target.value; queueSave();
+  });
+  document.getElementById('searchInput').addEventListener('input', e=>{
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('#studentBody tr[data-nama]').forEach(tr=>{
+      tr.style.display = tr.getAttribute('data-nama').includes(q) ? '' : 'none';
+    });
   });
   document.getElementById('addStudentBtn').addEventListener('click', ()=>{
     const newId = crypto.randomUUID();
@@ -1190,6 +1201,36 @@ document.getElementById('btnBackup').addEventListener('click', ()=>{
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+});
+
+/* ================= AKSI: PULIHKAN DATA DARI CADANGAN ================= */
+document.getElementById('btnRestore').addEventListener('click', ()=>{
+  document.getElementById('restoreFileInput').click();
+});
+document.getElementById('restoreFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const parsed = JSON.parse(ev.target.result);
+      if(!parsed || !parsed.programs){
+        alert('File cadangan tidak valid atau rusak.');
+        return;
+      }
+      if(!confirm('Memulihkan cadangan akan MENGGANTIKAN semua data yang ada saat ini. Lanjutkan?')) return;
+      state = parsed;
+      document.getElementById('metaKepala').value = state.meta.kepala || '';
+      document.getElementById('metaTanggal').value = state.meta.tanggal || '';
+      renderAll();
+      saveState();
+      alert('Data berhasil dipulihkan dari cadangan.');
+    }catch(err){
+      alert('Gagal membaca file cadangan. Pastikan file berformat JSON yang benar.');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
 });
 </script>
 </div>
