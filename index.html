@@ -13,6 +13,7 @@
   // ============ FIREBASE SETUP ============
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyD1HaGZbbY2eNAJY7AnYJoyYCrdLjafMo0",
@@ -26,9 +27,10 @@
 
   const fbApp = initializeApp(firebaseConfig);
   const db = getFirestore(fbApp);
+  const auth = getAuth(fbApp);
 
   // Ekspos ke luar module supaya bisa dipakai oleh script biasa di bawah
-  window.__fb = { db, doc, getDoc, setDoc };
+  window.__fb = { db, doc, getDoc, setDoc, auth, signInAnonymously, onAuthStateChanged };
 </script>
 <style>
   :root{
@@ -359,6 +361,18 @@
 </style>
 </head>
 <body>
+
+<div id="loginOverlay" style="position:fixed; inset:0; z-index:9999; background:linear-gradient(180deg,#0a2650,#0f3369); display:flex; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:#ffffff; border-radius:16px; padding:32px 28px; max-width:340px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,.3); text-align:center;">
+    <div style="font-family:'Amiri',serif; font-size:20px; font-weight:700; color:#0f3369; margin-bottom:6px;">Markaz Thalabul Ilmi</div>
+    <div style="font-size:12.5px; color:#65707f; margin-bottom:20px;">Masukkan kata sandi untuk membuka papan pantau</div>
+    <input id="loginPassword" type="password" placeholder="Kata sandi" style="width:100%; padding:10px 12px; border:1px solid #e0e4ea; border-radius:8px; font-family:'Amiri',serif; font-size:14px; margin-bottom:12px; box-sizing:border-box;">
+    <button id="loginBtn" style="width:100%; padding:11px; background:#0f3369; color:#fff; border:none; border-radius:8px; font-family:'Amiri',serif; font-size:14px; font-weight:700; cursor:pointer;">Masuk</button>
+    <div id="loginError" style="color:#b3452c; font-size:12px; margin-top:10px; min-height:16px;"></div>
+  </div>
+</div>
+
+<div id="appContent" style="display:none;">
 
 <div class="topbar">
   <div class="header-inner">
@@ -1093,13 +1107,56 @@ document.getElementById('btnMail').addEventListener('click', ()=>{
 });
 
 /* ================= INISIALISASI ================= */
-(async function init(){
+const DASHBOARD_PASSWORD = "180920";
+
+async function init(){
   await loadState();
   document.getElementById('metaKepala').value = state.meta.kepala;
   document.getElementById('metaTanggal').value = state.meta.tanggal;
   renderArch();
   renderAll();
-})();
+}
+
+async function doLogin(){
+  const pwInput = document.getElementById('loginPassword');
+  const errEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  const entered = pwInput.value;
+
+  if(entered !== DASHBOARD_PASSWORD){
+    errEl.textContent = 'Kata sandi salah. Silakan coba lagi.';
+    return;
+  }
+
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Memuat...';
+
+  try{
+    await waitForFirebase();
+    const { auth, signInAnonymously, onAuthStateChanged } = window.__fb;
+    await signInAnonymously(auth);
+    await new Promise((resolve)=>{
+      const unsub = onAuthStateChanged(auth, (user)=>{
+        if(user){ unsub(); resolve(); }
+      });
+    });
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('appContent').style.display = 'block';
+    await init();
+  }catch(e){
+    console.error('Login error:', e);
+    errEl.textContent = 'Gagal terhubung. Periksa koneksi internet lalu coba lagi.';
+    btn.disabled = false;
+    btn.textContent = 'Masuk';
+  }
+}
+
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginPassword').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') doLogin();
+});
 </script>
+</div>
 </body>
 </html>
