@@ -147,12 +147,75 @@
   .meta-box input:last-child{margin-bottom:0;}
   .meta-box input:focus{outline:none; border-bottom-color:var(--silver);}
 
+  /* ---------- JAM & TANGGAL HIJRIAH ---------- */
+  .clock-box{
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(195,204,215,.35);
+    border-radius:10px;
+    padding:14px 20px;
+    min-width:230px;
+    text-align:center;
+  }
+  .clock-time{
+    font-family:'Amiri',serif; font-weight:700; font-size:26px; color:#fff;
+    letter-spacing:.5px; line-height:1.1;
+  }
+  .clock-time span{font-size:13px; font-weight:600; color:var(--silver); margin-left:3px;}
+  .clock-masehi{font-size:12px; color:#cdd6e4; margin-top:4px;}
+  .clock-hijriah{font-size:12.5px; color:var(--silver); margin-top:2px; font-weight:700;}
+  .clock-hijriah .arabic{font-size:14px; margin-left:4px;}
+
   .wrap{max-width:1220px; margin:0 auto; padding:0 24px;}
+
+  /* ---------- KELOLA KELAS ---------- */
+  .ov-card{position:relative;}
+  .ov-card-edit{
+    position:absolute; top:6px; right:6px;
+    width:22px; height:22px; border-radius:6px;
+    border:none; background:rgba(15,51,105,.08); color:var(--navy);
+    font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:opacity .12s ease;
+  }
+  .ov-card:hover .ov-card-edit{opacity:1;}
+  .ov-card-add{
+    background:var(--card); border:1.5px dashed var(--silver-deep); border-radius:4px 4px 14px 14px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--navy-light); font-weight:700; font-size:13px; gap:6px;
+    min-height:96px; transition:background .15s ease, border-color .15s ease;
+  }
+  .ov-card-add:hover{background:var(--panel-tint); border-color:var(--navy-light);}
+  .ov-card-add .plus{font-size:22px; line-height:1;}
+
+  .modal-overlay2{
+    position:fixed; inset:0; background:rgba(15,38,80,.45); z-index:200;
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-box2{
+    background:#fff; border-radius:14px; padding:22px 24px; width:100%; max-width:400px;
+    box-shadow:0 20px 50px rgba(15,51,105,.3);
+  }
+  .modal-box2 h3{margin:0 0 14px; font-family:'Amiri',serif; color:var(--navy); font-size:18px;}
+  .modal-box2 label{display:block; font-size:11.5px; color:var(--muted); margin-bottom:4px; margin-top:12px;}
+  .modal-box2 label:first-of-type{margin-top:0;}
+  .modal-box2 input, .modal-box2 textarea{
+    width:100%; border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+    font-family:'Amiri',serif; font-size:13.5px; color:var(--ink);
+  }
+  .modal-box2 input:focus, .modal-box2 textarea:focus{outline:none; border-color:var(--navy-light);}
+  .modal-box2 .modal-actions2{display:flex; justify-content:space-between; gap:10px; margin-top:20px;}
+  .modal-box2 .modal-actions2-right{display:flex; gap:8px;}
+  .mbtn{border:none; border-radius:8px; padding:8px 16px; font-family:'Amiri',serif; font-weight:700; font-size:12.5px; cursor:pointer;}
+  .mbtn-cancel{background:var(--panel-tint); color:var(--muted);}
+  .mbtn-cancel:hover{background:var(--line);}
+  .mbtn-save{background:var(--navy); color:#fff;}
+  .mbtn-save:hover{background:var(--navy-light);}
+  .mbtn-delete{background:#fbe8e2; color:var(--bad);}
+  .mbtn-delete:hover{background:#f6d3c8;}
 
   /* ---------- OVERVIEW CARDS ---------- */
   .overview{
     display:grid;
-    grid-template-columns:repeat(5,1fr);
+    grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
     gap:14px;
     margin-top:-30px;
     position:relative;
@@ -394,6 +457,11 @@
         <div class="brand-sub">Pusat Pengembangan Ilmu &amp; Keterampilan — Jakarta Barat, DKI Jakarta</div>
       </div>
     </div>
+    <div class="clock-box">
+      <div class="clock-time" id="clockTime">--:--<span>:--</span></div>
+      <div class="clock-masehi" id="clockMasehi">—</div>
+      <div class="clock-hijriah" id="clockHijriah">—</div>
+    </div>
     <div class="meta-box">
       <label>Kepala Markaz / Musyrif</label>
       <input id="metaKepala" placeholder="Nama kepala markaz / musyrif" />
@@ -465,6 +533,23 @@
   </div>
 </div>
 
+<div id="classModalOverlay" class="modal-overlay2">
+  <div class="modal-box2">
+    <h3 id="classModalTitle">Tambah Kelas</h3>
+    <label>Nama Kelas</label>
+    <input id="classNameInput" placeholder="Contoh: Tahsin">
+    <label>Deskripsi Singkat (opsional)</label>
+    <textarea id="classDescInput" rows="2" placeholder="Contoh: Perbaikan bacaan dan tajwid dasar Al-Qur'an"></textarea>
+    <div class="modal-actions2">
+      <button class="mbtn mbtn-delete" id="classDeleteBtn" style="display:none;">🗑 Hapus Kelas</button>
+      <div class="modal-actions2-right">
+        <button class="mbtn mbtn-cancel" id="classCancelBtn">Batal</button>
+        <button class="mbtn mbtn-save" id="classSaveBtn">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ================= DATA MODEL ================= */
 /* ================= LOGO & FONT ARAB UNTUK PDF ================= */
@@ -506,7 +591,10 @@ async function renderArabicToImage(text, fontSizePx=34){
   return { dataUrl: canvas.toDataURL('image/png'), width, height, scale };
 }
 
-const PROGRAM_DEFS = [
+// Daftar kelas bawaan (default) — dipakai hanya saat pertama kali dimuat / belum ada data tersimpan.
+// Sesudah itu, daftar kelas yang berlaku adalah state.programDefs (tersimpan & bisa diubah oleh pengguna:
+// tambah kelas baru, ubah nama/deskripsi, atau hapus kelas).
+const DEFAULT_PROGRAM_DEFS = [
   {key:'tahsin', name:"Tahsin", desc:"Perbaikan bacaan dan tajwid dasar Al-Qur'an"},
   {key:'talaqqi', name:"Talaqqi Qira'at", desc:"Talaqqi langsung riwayat dan maqra' qira'at"},
   {key:'tahfizh_quran', name:"Hifzh Al-Qur'an", desc:"Hafalan dan muraja'ah Al-Qur'an per juz"},
@@ -522,15 +610,24 @@ function seedStudents(programKey){
   return [];
 }
 
+function makeClassKey(name){
+  let base = (name||'kelas').toString().trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'kelas';
+  let key = base, n = 1;
+  while(state.programDefs.some(p=>p.key===key)){ n++; key = base + '_' + n; }
+  return key;
+}
+
 let state = {
   meta:{ kepala:"", tanggal: new Date().toISOString().slice(0,10) },
+  programDefs: JSON.parse(JSON.stringify(DEFAULT_PROGRAM_DEFS)),
   programs:{}
 };
-PROGRAM_DEFS.forEach(p=>{
+state.programDefs.forEach(p=>{
   state.programs[p.key] = { guru:"", students: seedStudents(p.key) };
 });
 
-let activeProgram = PROGRAM_DEFS[0].key;
+let activeProgram = state.programDefs[0].key;
 
 /* ================= STORAGE ================= */
 let saveInFlight = false;
@@ -576,6 +673,32 @@ function queueSave(){
 window.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden'){ clearTimeout(saveTimer); saveState(); } });
 window.addEventListener('pagehide', ()=>{ clearTimeout(saveTimer); saveState(); });
 
+// Menyiapkan state hasil pemuatan/pemulihan agar selalu punya struktur yang konsisten:
+// - programDefs ada (migrasi dari data lama yang belum mengenal kelas dinamis)
+// - setiap kelas di programDefs punya entri di programs
+// - activeProgram menunjuk ke kelas yang benar-benar ada
+function normalizeState(){
+  if(!Array.isArray(state.programDefs) || state.programDefs.length===0){
+    // Data lama: rekonstruksi programDefs dari kunci-kunci yang ada di state.programs,
+    // memakai nama/deskripsi bawaan jika cocok, atau nama otomatis jika tidak dikenal.
+    const keys = Object.keys(state.programs||{});
+    if(keys.length){
+      state.programDefs = keys.map(k=>{
+        const known = DEFAULT_PROGRAM_DEFS.find(d=>d.key===k);
+        return known ? {...known} : {key:k, name:k, desc:''};
+      });
+    } else {
+      state.programDefs = JSON.parse(JSON.stringify(DEFAULT_PROGRAM_DEFS));
+    }
+  }
+  state.programDefs.forEach(p=>{
+    if(!state.programs[p.key]) state.programs[p.key] = { guru:"", students: [] };
+  });
+  if(!state.programDefs.some(p=>p.key===activeProgram)){
+    activeProgram = state.programDefs[0].key;
+  }
+}
+
 async function loadState(){
   try{
     await waitForFirebase();
@@ -589,6 +712,7 @@ async function loadState(){
       }
     }
   }catch(e){ console.error('loadState error:', e); /* belum ada data tersimpan, gunakan data awal */ }
+  normalizeState();
 }
 
 /* ================= HELPERS ================= */
@@ -619,25 +743,118 @@ function renderArch(){
 function renderOverview(){
   const host = document.getElementById('overview');
   host.innerHTML='';
-  PROGRAM_DEFS.forEach((p,i)=>{
+  state.programDefs.forEach((p,i)=>{
     const sum = programSummary(p.key);
     const card = document.createElement('div');
     card.className = 'ov-card' + (activeProgram===p.key ? ' active':'');
     card.innerHTML = `
-      <div class="ov-num">0${i+1}</div>
-      <div class="ov-name">${p.name}</div>
+      <button class="ov-card-edit" title="Ubah nama / hapus kelas">✎</button>
+      <div class="ov-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="ov-name">${escapeHtml(p.name)}</div>
       <div class="ov-count">${sum.count} santri · rata-rata ${sum.avg}%</div>
       <div class="ov-bar"><i style="width:${sum.avg}%; background:${barColor(sum.avg)}"></i></div>
     `;
-    card.onclick = ()=>{ activeProgram = p.key; renderAll(); };
+    card.addEventListener('click', (e)=>{
+      if(e.target.closest('.ov-card-edit')) return; // biarkan tombol edit menangani sendiri
+      activeProgram = p.key; renderAll();
+    });
+    card.querySelector('.ov-card-edit').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openClassModal('edit', p.key);
+    });
     host.appendChild(card);
   });
+
+  const addCard = document.createElement('div');
+  addCard.className = 'ov-card-add';
+  addCard.innerHTML = `<div class="plus">＋</div><div>Tambah Kelas</div>`;
+  addCard.addEventListener('click', ()=> openClassModal('add'));
+  host.appendChild(addCard);
 }
+
+/* ================= KELOLA KELAS: TAMBAH / EDIT / HAPUS ================= */
+let classModalMode = null; // 'add' | 'edit'
+let classModalKey = null;
+
+function openClassModal(mode, key){
+  classModalMode = mode;
+  classModalKey = key || null;
+  const overlay = document.getElementById('classModalOverlay');
+  const title = document.getElementById('classModalTitle');
+  const nameInput = document.getElementById('classNameInput');
+  const descInput = document.getElementById('classDescInput');
+  const delBtn = document.getElementById('classDeleteBtn');
+
+  if(mode==='add'){
+    title.textContent = 'Tambah Kelas Baru';
+    nameInput.value = '';
+    descInput.value = '';
+    delBtn.style.display = 'none';
+  } else {
+    const p = state.programDefs.find(x=>x.key===key);
+    title.textContent = 'Ubah Kelas';
+    nameInput.value = p ? p.name : '';
+    descInput.value = p ? (p.desc||'') : '';
+    delBtn.style.display = state.programDefs.length>1 ? 'inline-flex' : 'none';
+  }
+  overlay.style.display = 'flex';
+  setTimeout(()=>nameInput.focus(), 30);
+}
+
+function closeClassModal(){
+  document.getElementById('classModalOverlay').style.display = 'none';
+  classModalMode = null; classModalKey = null;
+}
+
+document.getElementById('classCancelBtn').addEventListener('click', closeClassModal);
+document.getElementById('classModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id==='classModalOverlay') closeClassModal();
+});
+
+document.getElementById('classSaveBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('classNameInput').value.trim();
+  const desc = document.getElementById('classDescInput').value.trim();
+  if(!name){ alert('Nama kelas tidak boleh kosong.'); return; }
+
+  if(classModalMode==='add'){
+    const key = makeClassKey(name);
+    state.programDefs.push({key, name, desc});
+    state.programs[key] = { guru:"", students: [] };
+    activeProgram = key;
+  } else if(classModalMode==='edit' && classModalKey){
+    const p = state.programDefs.find(x=>x.key===classModalKey);
+    if(p){ p.name = name; p.desc = desc; }
+  }
+  closeClassModal();
+  renderAll();
+  saveState();
+});
+
+document.getElementById('classDeleteBtn').addEventListener('click', ()=>{
+  if(!classModalKey) return;
+  if(state.programDefs.length<=1){ alert('Tidak bisa menghapus kelas terakhir.'); return; }
+  const p = state.programDefs.find(x=>x.key===classModalKey);
+  const nama = p ? p.name : classModalKey;
+  const jumlahSantri = (state.programs[classModalKey]?.students || []).length;
+  const pesan = jumlahSantri>0
+    ? `Hapus kelas "${nama}"? Ini akan menghapus juga SEMUA data ${jumlahSantri} santri di kelas ini. Tindakan ini tidak bisa dibatalkan.`
+    : `Hapus kelas "${nama}"? Tindakan ini tidak bisa dibatalkan.`;
+  if(!confirm(pesan)) return;
+
+  state.programDefs = state.programDefs.filter(x=>x.key!==classModalKey);
+  delete state.programs[classModalKey];
+  if(activeProgram===classModalKey){
+    activeProgram = state.programDefs[0].key;
+  }
+  closeClassModal();
+  renderAll();
+  saveState();
+});
 
 /* ================= RENDER: SUMMARY STRIP ================= */
 function renderSummaryStrip(){
   let totalSantri=0, totalPersen=0, totalLancar=0, totalBimbingan=0, totalCount=0;
-  PROGRAM_DEFS.forEach(p=>{
+  state.programDefs.forEach(p=>{
     const list = state.programs[p.key].students;
     totalSantri += list.length;
     list.forEach(s=>{
@@ -655,7 +872,7 @@ function renderSummaryStrip(){
 
 /* ================= RENDER: PANEL (PROGRAM AKTIF) ================= */
 function renderPanel(){
-  const def = PROGRAM_DEFS.find(p=>p.key===activeProgram);
+  const def = state.programDefs.find(p=>p.key===activeProgram);
   const prog = state.programs[activeProgram];
   const sum = programSummary(activeProgram);
   const host = document.getElementById('panelHost');
@@ -809,7 +1026,7 @@ function escapeHtml(str){ return (str||'').toString().replace(/[&<>]/g, c=>({'&'
 function escapeAttr(str){ return (str||'').toString().replace(/"/g,'&quot;'); }
 
 function renderDockLabel(){
-  const p = PROGRAM_DEFS.find(x=>x.key===activeProgram);
+  const p = state.programDefs.find(x=>x.key===activeProgram);
   document.getElementById('dockLabel').innerHTML = `Laporan untuk kelas: <b>${p.name}</b>`;
 }
 
@@ -826,7 +1043,7 @@ document.getElementById('metaTanggal').addEventListener('input', e=>{ state.meta
 
 /* ================= TEKS LAPORAN (untuk WhatsApp) — SATU KELAS SATU LAPORAN ================= */
 function buildReportText(programKey){
-  const p = PROGRAM_DEFS.find(x=>x.key===programKey);
+  const p = state.programDefs.find(x=>x.key===programKey);
   const prog = state.programs[programKey];
   const sum = programSummary(programKey);
   const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
@@ -857,7 +1074,7 @@ function buildReportText(programKey){
 
 /* ================= TEKS LAPORAN — SATU SANTRI SATU LAPORAN ================= */
 function buildStudentReportText(programKey, studentId){
-  const p = PROGRAM_DEFS.find(x=>x.key===programKey);
+  const p = state.programDefs.find(x=>x.key===programKey);
   const prog = state.programs[programKey];
   const s = prog.students.find(x=>x.id===studentId);
   const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
@@ -913,7 +1130,7 @@ function drawLetterhead(doc, subtitleLine){
 async function buildStudentPDF(programKey, studentId){
   if(!window.jspdf) return null;
   const { jsPDF } = window.jspdf;
-  const p = PROGRAM_DEFS.find(x=>x.key===programKey);
+  const p = state.programDefs.find(x=>x.key===programKey);
   const prog = state.programs[programKey];
   const s = prog.students.find(x=>x.id===studentId);
   if(!s) return null;
@@ -1063,7 +1280,7 @@ document.getElementById('btnPDF').addEventListener('click', async ()=>{
     const doc = new jsPDF({unit:'pt', format:'a4'});
     const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
 
-    const p = PROGRAM_DEFS.find(x=>x.key===activeProgram);
+    const p = state.programDefs.find(x=>x.key===activeProgram);
     const prog = state.programs[activeProgram];
     const sum = programSummary(activeProgram);
 
@@ -1130,13 +1347,77 @@ document.getElementById('btnPDF').addEventListener('click', async ()=>{
 /* ================= AKSI: KIRIM MELALUI SUREL (EMAIL) ================= */
 document.getElementById('btnMail').addEventListener('click', ()=>{
   const to = document.getElementById('mailTo').value.trim();
-  const p = PROGRAM_DEFS.find(x=>x.key===activeProgram);
+  const p = state.programDefs.find(x=>x.key===activeProgram);
   const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
   const subject = `Laporan Perkembangan Santri - Kelas ${p.name} - Markaz Thalabul Ilmi - ${tgl}`;
   const body = buildReportText(activeProgram) + `\n\n(Mohon lampirkan berkas PDF hasil unduhan "Unduh Laporan PDF" secara manual pada surel ini, karena peramban tidak mengizinkan lampiran otomatis demi keamanan.)`;
   const url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.location.href = url;
 });
+
+/* ================= JAM & TANGGAL HIJRIAH (REAL-TIME) ================= */
+const HIJRI_MONTHS = [
+  "Muharram","Shafar","Rabi'ul Awwal","Rabi'ul Akhir","Jumadil Awwal","Jumadil Akhir",
+  "Rajab","Sya'ban","Ramadhan","Syawwal","Dzulqa'dah","Dzulhijjah"
+];
+const HIJRI_MONTHS_AR = [
+  "محرم","صفر","ربيع الأول","ربيع الآخر","جمادى الأولى","جمادى الآخرة",
+  "رجب","شعبان","رمضان","شوال","ذو القعدة","ذو الحجة"
+];
+
+// Menggunakan Intl dengan kalender Islam (islamic-umalqura bila tersedia di peramban,
+// dengan cadangan otomatis ke 'islamic' bila tidak didukung) supaya tanggal Hijriah
+// selalu mengikuti tanggal & waktu asli perangkat, tanpa perlu tabel konversi manual.
+function getHijriParts(date){
+  const calendars = ['islamic-umalqura','islamic'];
+  for(const cal of calendars){
+    try{
+      const fmt = new Intl.DateTimeFormat('en-TN-u-ca-'+cal, {day:'numeric', month:'numeric', year:'numeric'});
+      const parts = fmt.formatToParts(date);
+      const get = (t)=> parts.find(p=>p.type===t)?.value;
+      const day = parseInt(get('day'),10);
+      const month = parseInt(get('month'),10); // 1-12
+      const year = get('year');
+      if(day && month && year) return {day, month, year: year.replace(/^0+/,'')};
+    }catch(e){ /* coba kalender cadangan berikutnya */ }
+  }
+  return null;
+}
+
+function updateClock(){
+  const now = new Date();
+
+  // Jam (mengikuti waktu & zona waktu asli perangkat)
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  const timeEl = document.getElementById('clockTime');
+  if(timeEl) timeEl.innerHTML = `${hh}:${mm}<span>:${ss}</span>`;
+
+  // Tanggal Masehi
+  const masehiEl = document.getElementById('clockMasehi');
+  if(masehiEl){
+    masehiEl.textContent = now.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  }
+
+  // Tanggal Hijriah (dihitung ulang dari waktu asli setiap kali fungsi ini berjalan)
+  const hijriEl = document.getElementById('clockHijriah');
+  if(hijriEl){
+    const h = getHijriParts(now);
+    if(h){
+      const namaBulan = HIJRI_MONTHS[h.month-1] || '';
+      const namaBulanAr = HIJRI_MONTHS_AR[h.month-1] || '';
+      hijriEl.innerHTML = `${h.day} ${namaBulan} ${h.year} H <span class="arabic">${namaBulanAr}</span>`;
+    } else {
+      hijriEl.textContent = '—';
+    }
+  }
+}
+
+function startClock(){
+  updateClock();
+  setInterval(updateClock, 1000);
+}
 
 /* ================= INISIALISASI ================= */
 const DASHBOARD_PASSWORD = "180920";
@@ -1149,6 +1430,7 @@ async function init(){
   document.getElementById('metaTanggal').value = state.meta.tanggal;
   renderArch();
   renderAll();
+  startClock();
   if(loadNote) loadNote.textContent = '';
 }
 
@@ -1244,6 +1526,7 @@ document.getElementById('restoreFileInput').addEventListener('change', (e)=>{
       }
       if(!confirm('Memulihkan cadangan akan MENGGANTIKAN semua data yang ada saat ini. Lanjutkan?')) return;
       state = parsed;
+      normalizeState();
       document.getElementById('metaKepala').value = state.meta.kepala || '';
       document.getElementById('metaTanggal').value = state.meta.tanggal || '';
       renderAll();
