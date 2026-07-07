@@ -388,12 +388,14 @@
       <input id="metaKepala" placeholder="Nama kepala markaz / musyrif" />
       <label>Tanggal Laporan</label>
       <input id="metaTanggal" type="date" />
+      <button id="logoutBtn" style="margin-top:10px; width:100%; background:rgba(255,255,255,.08); border:1px solid rgba(195,204,215,.35); color:#cdd6e4; font-family:'Amiri',serif; font-size:12px; padding:6px 0; border-radius:6px; cursor:pointer;">🔒 Keluar</button>
     </div>
   </div>
   <div class="arch-row" id="archRow"></div>
 </div>
 
 <div class="wrap">
+  <div id="loadDataNote" style="text-align:center; font-size:12px; color:var(--muted); margin-top:14px;"></div>
   <div class="overview" id="overview"></div>
 
   <div class="summary-strip">
@@ -421,6 +423,7 @@
       <button class="dock-btn btn-wa" id="btnWA">📲 Kirim Laporan ke WhatsApp</button>
       <button class="dock-btn btn-pdf" id="btnPDF">📄 Unduh Laporan PDF</button>
       <button class="dock-btn btn-mail" id="btnMail">✉️ Kirim Laporan melalui Surel</button>
+      <button class="dock-btn" id="btnBackup" style="background:var(--muted);">💾 Cadangkan Semua Data</button>
     </div>
   </div>
   <div class="save-note" id="saveNote">Data santri tersimpan otomatis dan tetap ada walau Anda keluar atau menutup halaman ini. Setiap laporan yang dikirim hanya memuat data kelas yang sedang dibuka.</div>
@@ -758,6 +761,8 @@ function renderPanel(){
       });
     });
     tr.querySelector('.del-btn').addEventListener('click', ()=>{
+      const nama = student.namaId || '(tanpa nama)';
+      if(!confirm(`Hapus data santri "${nama}"? Tindakan ini tidak bisa dibatalkan.`)) return;
       prog.students = prog.students.filter(s=>s.id!==id);
       renderAll(); saveState();
     });
@@ -1110,11 +1115,14 @@ document.getElementById('btnMail').addEventListener('click', ()=>{
 const DASHBOARD_PASSWORD = "180920";
 
 async function init(){
+  const loadNote = document.getElementById('loadDataNote');
+  if(loadNote) loadNote.textContent = 'Memuat data terbaru…';
   await loadState();
   document.getElementById('metaKepala').value = state.meta.kepala;
   document.getElementById('metaTanggal').value = state.meta.tanggal;
   renderArch();
   renderAll();
+  if(loadNote) loadNote.textContent = '';
 }
 
 async function doLogin(){
@@ -1143,6 +1151,7 @@ async function doLogin(){
     });
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('appContent').style.display = 'block';
+    pwInput.value = '';
     await init();
   }catch(e){
     console.error('Login error:', e);
@@ -1152,9 +1161,35 @@ async function doLogin(){
   }
 }
 
+function doLogout(){
+  if(!confirm('Keluar dari papan pantau? Anda perlu memasukkan kata sandi lagi untuk masuk.')) return;
+  document.getElementById('appContent').style.display = 'none';
+  document.getElementById('loginOverlay').style.display = 'flex';
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = false;
+  btn.textContent = 'Masuk';
+  document.getElementById('loginError').textContent = '';
+}
+
 document.getElementById('loginBtn').addEventListener('click', doLogin);
 document.getElementById('loginPassword').addEventListener('keydown', (e)=>{
   if(e.key === 'Enter') doLogin();
+});
+document.getElementById('logoutBtn').addEventListener('click', doLogout);
+
+/* ================= AKSI: CADANGKAN DATA (BACKUP JSON) ================= */
+document.getElementById('btnBackup').addEventListener('click', ()=>{
+  const dataStr = JSON.stringify(state, null, 2);
+  const blob = new Blob([dataStr], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const tgl = new Date(state.meta.tanggal || Date.now()).toISOString().split('T')[0];
+  a.href = url;
+  a.download = `Cadangan-Data-Markaz-Thalabul-Ilmi-${tgl}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 });
 </script>
 </div>
