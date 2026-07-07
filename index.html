@@ -56,7 +56,7 @@
     color:var(--ink);
     font-family:'Amiri', serif;
     font-feature-settings:"tnum" 1;
-    padding-bottom:90px;
+    padding-bottom:40px;
   }
   h1,h2,h3,.serif{font-family:'Amiri', serif;}
   .arabic{font-family:'KFGQPC HAFS Uthmanic Script Regular', serif; direction:rtl;}
@@ -294,6 +294,15 @@
     max-height:38vh; overflow-y:auto;
   }
   .dock.collapsed{ max-height:0; padding-top:0; padding-bottom:0; overflow:hidden; border-top:none; }
+  .dock-fab{
+    position:fixed; right:18px; bottom:18px; z-index:60;
+    width:54px; height:54px; border-radius:50%;
+    background:var(--navy); color:#fff; border:none;
+    box-shadow:0 6px 18px rgba(15,51,105,.4);
+    font-size:22px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .dock-fab:hover{background:var(--navy-light);}
   .dock-inner{
     max-width:1220px; margin:0 auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
   }
@@ -410,8 +419,12 @@
   <div id="panelHost"></div>
 </div>
 
-<div class="dock" id="dockPanel" style="position:fixed;">
-  <button id="dockToggle" title="Sembunyikan/tampilkan panel" style="position:absolute; top:-14px; left:50%; transform:translateX(-50%); background:var(--navy-deep); border:1px solid rgba(195,204,215,.3); border-bottom:none; border-radius:8px 8px 0 0; color:#cdd6e4; font-size:11px; padding:2px 14px; cursor:pointer;">▾ Sembunyikan Panel</button>
+<button class="dock-fab" id="dockToggle" title="Buka panel laporan">📤</button>
+
+<div class="dock collapsed" id="dockPanel">
+  <div style="text-align:right; margin-bottom:2px;">
+    <button id="dockClose" style="background:none; border:none; color:#cdd6e4; font-size:12px; cursor:pointer; padding:2px 6px;">✕ Tutup</button>
+  </div>
   <div class="dock-inner">
     <div class="dock-label" id="dockLabel">Laporan untuk kelas: <b>—</b></div>
     <div class="dock-inputs">
@@ -1193,10 +1206,10 @@ document.getElementById('logoutBtn').addEventListener('click', doLogout);
 
 /* ================= AKSI: SEMBUNYIKAN / TAMPILKAN PANEL BAWAH ================= */
 document.getElementById('dockToggle').addEventListener('click', ()=>{
-  const dock = document.getElementById('dockPanel');
-  const btn = document.getElementById('dockToggle');
-  dock.classList.toggle('collapsed');
-  btn.textContent = dock.classList.contains('collapsed') ? '▴ Tampilkan Panel' : '▾ Sembunyikan Panel';
+  document.getElementById('dockPanel').classList.remove('collapsed');
+});
+document.getElementById('dockClose').addEventListener('click', ()=>{
+  document.getElementById('dockPanel').classList.add('collapsed');
 });
 
 /* ================= AKSI: CADANGKAN DATA (BACKUP JSON) ================= */
