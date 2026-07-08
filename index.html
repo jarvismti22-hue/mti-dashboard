@@ -414,6 +414,8 @@
   .btn-wa:hover{background:#268e4f;}
   .btn-pdf{background:var(--silver); color:#0f2140;}
   .btn-pdf:hover{background:#d5dce4;}
+  .btn-wa-pdf{background:#1c8a4d; color:#fff; border:1px solid rgba(255,255,255,.25) !important;}
+  .btn-wa-pdf:hover{background:#166b3c;}
   .btn-mail{background:transparent; color:#eef2f8; border:1px solid rgba(195,204,215,.5) !important;}
   .btn-mail:hover{background:rgba(255,255,255,.08);}
   .save-note{font-size:10px; color:#a9b7cc; margin-top:2px;}
@@ -530,6 +532,7 @@
     <div class="dock-btns">
       <button class="dock-btn btn-wa" id="btnWA">📲 Kirim Laporan ke WhatsApp</button>
       <button class="dock-btn btn-pdf" id="btnPDF">📄 Unduh Laporan PDF</button>
+      <button class="dock-btn btn-wa-pdf" id="btnWaPdf">📄📲 Unduh PDF & Kirim ke WhatsApp</button>
       <button class="dock-btn btn-mail" id="btnMail">✉️ Kirim Laporan melalui Surel</button>
       <button class="dock-btn" id="btnBackup" style="background:var(--muted);">💾 Cadangkan Semua Data</button>
       <button class="dock-btn" id="btnRestore" style="background:var(--warn);">📤 Pulihkan dari Cadangan</button>
@@ -623,6 +626,51 @@ const LETTERHEAD_IMG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAggAAAD6CA
 function getLogoDataUrl(){
   const img = document.querySelector('.brand-logo img');
   return img ? img.getAttribute('src') : null;
+}
+
+// Merender teks Latin dengan font Amiri (yang sudah dimuat di halaman) menjadi gambar PNG,
+// supaya laporan PDF bisa memakai tipografi Amiri meski jsPDF sendiri tidak bisa
+// menyematkan font kustom tanpa file font mentah. Dipakai untuk judul & label pada PDF.
+async function renderAmiriTextToImage(text, {fontSizePx=20, weight='400', color='#141c28', align='left'}={}){
+  if(!text) return null;
+  const family = `"Amiri", serif`;
+  try{
+    await document.fonts.load(`${weight} ${fontSizePx}px ${family}`);
+    await document.fonts.ready;
+  }catch(e){ /* lanjutkan walau gagal memastikan font termuat */ }
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const scale = 3; // render pada resolusi tinggi agar tajam saat dicetak di PDF
+  const fontSpec = `${weight} ${fontSizePx*scale}px ${family}`;
+  ctx.font = fontSpec;
+  const metrics = ctx.measureText(text);
+  const padding = 4*scale;
+  const width = Math.ceil(metrics.width) + padding*2;
+  const height = Math.ceil(fontSizePx*scale*1.5) + padding;
+
+  canvas.width = width;
+  canvas.height = height;
+  ctx.font = fontSpec;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = color;
+  ctx.clearRect(0,0,width,height);
+  ctx.fillText(text, align==='right' ? width - padding : padding, height/2);
+
+  return { dataUrl: canvas.toDataURL('image/png'), width, height, scale };
+}
+
+// Menggambar teks Amiri (sudah dirender jadi gambar) ke posisi (x,y) pada dokumen PDF,
+// dengan y sebagai baseline tengah teks, meniru cara kerja doc.text() milik jsPDF.
+async function drawAmiriText(doc, text, x, y, opts={}){
+  const img = await renderAmiriTextToImage(text, opts);
+  if(!img) return 0;
+  const heightPt = (opts.fontSizePx || 20) * 1.15;
+  const widthPt = (img.width/img.height) * heightPt;
+  const drawX = opts.align==='right' ? x - widthPt : (opts.align==='center' ? x - widthPt/2 : x);
+  try{ doc.addImage(img.dataUrl, 'PNG', drawX, y - heightPt/2, widthPt, heightPt); }catch(e){ /* lewati jika gagal */ }
+  return widthPt;
 }
 
 // Merender teks Arab menjadi gambar PNG menggunakan font yang sudah dimuat di halaman,
@@ -1031,6 +1079,7 @@ function renderPanel(){
         <div class="row-send">
           <button class="row-send-btn rs-wa" data-action="wa" title="Kirim laporan peserta ini ke WhatsApp">📲</button>
           <button class="row-send-btn rs-pdf" data-action="pdf" title="Unduh PDF laporan peserta ini">📄</button>
+          <button class="row-send-btn rs-wa-pdf" data-action="wa-pdf" title="Unduh PDF laporan peserta ini lalu buka WhatsApp untuk mengirimkannya">📄📲</button>
           <button class="row-send-btn rs-mail" data-action="mail" title="Kirim laporan peserta ini melalui surel">✉️</button>
         </div>
       </td>
@@ -1292,7 +1341,7 @@ function buildReportText(programKey){
     prog.students.forEach((s,i)=>{
       lines.push(`${i+1}. ${s.namaId||'(tanpa nama)'} (${s.namaAr||'-'})`);
       lines.push(`   Usia ${s.usia||'-'} tahun, asal ${s.asal||'-'}`);
-      lines.push(`   Capaian: ${s.capaian||'-'} (${s.persen}%)`);
+      lines.push(`   Capaian: ${s.capaian||'-'}`);
       lines.push(`   Status: ${s.status}`);
       if(s.catatan){ lines.push(`   Catatan: ${s.catatan}`); }
       lines.push('');
@@ -1335,7 +1384,6 @@ function buildStudentReportText(programKey, studentId){
   lines.push('');
   lines.push(`Target / Materi  : ${s.materi || '-'}`);
   lines.push(`Capaian Saat Ini : ${s.capaian || '-'}`);
-  lines.push(`Perkembangan  : ${s.persen}%`);
   lines.push(`Status    : ${s.status}`);
   if(s.catatan){ lines.push(`Catatan Pengajar : ${s.catatan}`); }
   lines.push('');
@@ -1349,39 +1397,47 @@ function buildStudentReportText(programKey, studentId){
 
 // Menggambar kop surat resmi (logo, nama lembaga, lokasi) di posisi atas dokumen.
 // Mengembalikan koordinat Y setelah kop surat selesai digambar.
-function drawLetterhead(doc, subtitleLine){
-  // Kop surat: logo lembaga (dari Pengaturan Lembaga, jika ada) + nama & sub-nama lembaga
-  // digambar sebagai teks agar selalu mengikuti identitas lembaga yang tersimpan di state,
-  // bukan lagi mengandalkan gambar kop gabungan statis.
+async function drawLetterhead(doc, subtitleLine){
+  // Kop surat gaya modern minimalis: banyak whitespace, aksen warna tipis (bukan blok solid),
+  // logo di kiri sejajar dengan nama lembaga supaya terasa lebih ringan dan lapang.
+  // Judul dan nama lembaga dirender dengan font Amiri (via drawAmiriText) agar tipografi
+  // laporan PDF konsisten dengan tampilan Amiri di seluruh aplikasi.
   const lb = state.meta.lembaga || {};
   const namaLembaga = lb.nama || 'Markaz Thalabul Ilmi';
-  const subGabungan = [lb.sub, lb.alamat].filter(Boolean).join('  —  ');
+  const subGabungan = [lb.sub, lb.alamat].filter(Boolean).join('  ·  ');
   const pageWidth = doc.internal.pageSize.getWidth();
   const logoSrc = lb.logo || LETTERHEAD_IMG;
+  const marginX = 48;
 
-  const logoSize = 46; // sisi logo persegi pada PDF (pt)
-  const logoX = (pageWidth - logoSize) / 2;
-  try{ doc.addImage(logoSrc, 'PNG', logoX, 24, logoSize, logoSize); }catch(e){ /* lanjut tanpa logo jika gagal dimuat */ }
+  const logoSize = 34;
+  let textX = marginX;
+  try{
+    doc.addImage(logoSrc, 'PNG', marginX, 40, logoSize, logoSize);
+    textX = marginX + logoSize + 14;
+  }catch(e){ /* lanjut tanpa logo jika gagal dimuat */ }
 
-  let y = 24 + logoSize + 14;
-  doc.setFontSize(14); doc.setTextColor(15,51,105); doc.setFont('helvetica','bold');
-  doc.text(namaLembaga.toUpperCase(), pageWidth/2, y, {align:'center'});
-  y += 16;
+  await drawAmiriText(doc, namaLembaga, textX, 58, {fontSizePx:13, weight:'400', color:'#19232f'});
 
   if(subGabungan){
-    doc.setFontSize(9.5); doc.setTextColor(90,90,90); doc.setFont('helvetica','normal');
-    doc.text(subGabungan, pageWidth/2, y, {align:'center'});
-    y += 16;
+    await drawAmiriText(doc, subGabungan, textX, 71, {fontSizePx:8.5, weight:'400', color:'#8c94a0'});
   }
 
-  doc.setFontSize(10.5); doc.setTextColor(30,30,30); doc.setFont('helvetica','bold');
-  doc.text(subtitleLine, pageWidth/2, y, {align:'center'});
-  y += 14;
+  // Tanggal / label kecil di kanan atas, sejajar nama lembaga
+  const tglOnly = subtitleLine.split('—').pop().trim();
+  await drawAmiriText(doc, tglOnly, pageWidth - marginX, 58, {fontSizePx:8.5, weight:'400', color:'#8c94a0', align:'right'});
 
-  doc.setDrawColor(15,51,105); doc.setLineWidth(1.4); doc.line(40,y,555,y);
-  doc.setDrawColor(195,204,215); doc.setLineWidth(.6); doc.line(40,y+3,555,y+3);
+  let y = 40 + logoSize + 26;
 
-  return y + 22;
+  // Garis aksen tipis alih-alih blok warna tebal
+  doc.setDrawColor(225,229,235); doc.setLineWidth(0.75);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 26;
+
+  // Judul laporan, ringan namun jelas, dengan aksen warna tipis di label kecil di atasnya
+  await drawAmiriText(doc, 'LAPORAN PERKEMBANGAN PESERTA', marginX, y, {fontSizePx:8, weight:'700', color:'#0f3369'});
+  y += 20;
+
+  return y;
 }
 
 async function buildStudentPDF(programKey, studentId){
@@ -1392,53 +1448,84 @@ async function buildStudentPDF(programKey, studentId){
   const s = prog.students.find(x=>x.id===studentId);
   if(!s) return null;
   const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+  const marginX = 48;
 
   const doc = new jsPDF({unit:'pt', format:'a4'});
-  let y = drawLetterhead(doc, `Laporan Perkembangan Peserta  —  ${tgl}`);
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let y = await drawLetterhead(doc, `Laporan Perkembangan Peserta — ${tgl}`);
 
-  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
-  doc.text(`Kepala Markaz: ${state.meta.kepala || '-'}`, 40, y);
-  y += 18;
+  y += 12;
+  // Nama peserta besar dan lapang (font Amiri), nama Arab menyusul di bawahnya (bukan sebaris)
+  // supaya tetap terbaca meski nama panjang, khas gaya minimalis dengan banyak whitespace.
+  await drawAmiriText(doc, s.namaId || '(tanpa nama)', marginX, y, {fontSizePx:17, weight:'700', color:'#141c28'});
+  y += 6;
 
-  // Nama peserta (Indonesia), dengan nama Arab dirender sebagai gambar agar tampil sempurna
-  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(15,51,105);
-  doc.text(s.namaId || '(tanpa nama)', 40, y);
   if(s.namaAr){
     try{
-      const img = await renderArabicToImage(s.namaAr, 20);
+      const img = await renderArabicToImage(s.namaAr, 22);
       if(img){
-        const namaIdWidth = doc.getTextWidth(s.namaId || '(tanpa nama)');
-        const imgHeightPt = 18;
+        const imgHeightPt = 16;
         const imgWidthPt = (img.width/img.height) * imgHeightPt;
-        doc.addImage(img.dataUrl, 'PNG', 40 + namaIdWidth + 12, y - 13, imgWidthPt, imgHeightPt);
+        doc.addImage(img.dataUrl, 'PNG', pageWidth - marginX - imgWidthPt, y - 13, imgWidthPt, imgHeightPt);
       }
     }catch(e){ /* jika gagal, nama Arab dilewati agar PDF tetap terbentuk */ }
   }
   y += 20;
-  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(60,60,60);
-  doc.text(`Usia: ${s.usia || '-'} tahun     |     Asal: ${s.asal || '-'}     |     Kelas/Program: ${displayName(p)}     |     Pengampu: ${prog.guru || '-'}`, 40, y);
+
+  // Baris meta ringan: kelas/program sebagai label aksen kecil, sisanya teks abu-abu netral
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(140,148,160);
+  doc.text(`${displayName(p)}   ·   Pengampu ${prog.guru || '-'}   ·   ${s.usia || '-'} tahun   ·   ${s.asal || '-'}`, marginX, y);
+  y += 30;
+
+  // Kartu info berdampingan (2 kolom) alih-alih tabel penuh, memberi ruang bernapas
+  const colGap = 24;
+  const colWidth = (pageWidth - marginX*2 - colGap) / 2;
+  const cardY = y;
+  const cardH = 56;
+
+  async function infoCard(x, label, value){
+    doc.setDrawColor(230,233,238); doc.setLineWidth(0.75);
+    doc.line(x, cardY, x, cardY + cardH); // garis vertikal tipis di kiri sebagai aksen, bukan kotak penuh
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,157,168);
+    doc.text(label.toUpperCase(), x + 12, cardY + 16);
+    await drawAmiriText(doc, value || '-', x + 12, cardY + 32, {fontSizePx:11.5, weight:'700', color:'#19232f'});
+  }
+
+  await infoCard(marginX, 'Target / Materi', s.materi);
+  await infoCard(marginX + colWidth + colGap, 'Capaian Saat Ini', s.capaian);
+  y = cardY + cardH + 26;
+
+  doc.setDrawColor(240,242,246); doc.setLineWidth(0.75);
+  doc.line(marginX, y, pageWidth - marginX, y);
   y += 24;
 
-  doc.autoTable({
-    startY:y,
-    theme:'grid',
-    head:[['Keterangan','Isi']],
-    body:[
-      ['Target / Materi', s.materi || '-'],
-      ['Capaian Saat Ini', s.capaian || '-'],
-      ['Perkembangan', s.persen + '%'],
-      ['Status', s.status],
-      ['Catatan Pengajar', s.catatan || '-'],
-    ],
-    headStyles:{fillColor:[15,51,105], textColor:255, fontSize:9},
-    bodyStyles:{fontSize:9.5, textColor:30},
-    columnStyles:{0:{cellWidth:130, fontStyle:'bold'}},
-    margin:{left:40, right:40},
-  });
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,157,168);
+  doc.text('STATUS', marginX, y);
+  await drawAmiriText(doc, s.status || '-', marginX + 70, y - 3, {fontSizePx:10.5, weight:'700', color:'#19232f'});
+  y += 26;
 
-  let footY = doc.lastAutoTable.finalY + 30;
-  doc.setFontSize(8); doc.setTextColor(140,140,140);
-  doc.text(`Dibuat secara otomatis melalui Papan Pantau ${(state.meta.lembaga||{}).nama || 'Markaz Thalabul Ilmi'}.`, 40, footY);
+  if(s.catatan){
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,157,168);
+    doc.text('CATATAN PENGAJAR', marginX, y);
+    y += 14;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(70,78,90);
+    const catatanLines = doc.splitTextToSize(s.catatan, pageWidth - marginX*2);
+    doc.text(catatanLines, marginX, y);
+    y += catatanLines.length * 13 + 10;
+  }
+
+  // Baris tanda tangan / kepala markaz, tipis dan lapang
+  y += 20;
+  doc.setDrawColor(240,242,246); doc.setLineWidth(0.75);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 24;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,157,168);
+  doc.text('KEPALA MARKAZ', marginX, y);
+  await drawAmiriText(doc, state.meta.kepala || '-', marginX + 90, y - 3, {fontSizePx:10, weight:'700', color:'#19232f'});
+
+  let footY = doc.internal.pageSize.getHeight() - 40;
+  doc.setFontSize(7.5); doc.setTextColor(180,185,192);
+  doc.text(`Dibuat otomatis melalui Papan Pantau ${(state.meta.lembaga||{}).nama || 'Markaz Thalabul Ilmi'}.`, marginX, footY);
   return doc;
 }
 
@@ -1475,6 +1562,10 @@ async function openStudentSendModal(programKey, studentId, action){
     waField.style.display='flex'; mailField.style.display='none';
     confirmBtn.textContent = '📲 Kirim ke WhatsApp';
     document.getElementById('ssWaNumber').value = s.wa || '';
+  } else if(action==='wa-pdf'){
+    waField.style.display='flex'; mailField.style.display='none';
+    confirmBtn.textContent = '📲📄 Unduh PDF & Buka WhatsApp';
+    document.getElementById('ssWaNumber').value = s.wa || '';
   } else if(action==='mail'){
     waField.style.display='none'; mailField.style.display='flex';
     confirmBtn.textContent = '✉️ Buka di Aplikasi Surel';
@@ -1493,7 +1584,7 @@ document.getElementById('studentSendOverlay').addEventListener('click', (e)=>{
   if(e.target.id==='studentSendOverlay') closeStudentSendModal();
 });
 
-document.getElementById('ssConfirm').addEventListener('click', ()=>{
+document.getElementById('ssConfirm').addEventListener('click', async ()=>{
   if(!ssContext) return;
   const {programKey, studentId, action} = ssContext;
   const prog = state.programs[programKey];
@@ -1502,6 +1593,25 @@ document.getElementById('ssConfirm').addEventListener('click', ()=>{
 
   if(action==='wa'){
     const text = buildStudentReportText(programKey, studentId);
+    const num = document.getElementById('ssWaNumber').value.replace(/[^0-9]/g,'');
+    const url = num
+      ? `https://wa.me/${num}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  } else if(action==='wa-pdf'){
+    // Peramban tidak mengizinkan lampiran file otomatis ke WhatsApp demi keamanan,
+    // jadi PDF diunduh lebih dulu, lalu WhatsApp dibuka dengan pesan berisi instruksi
+    // agar pengguna melampirkan berkas PDF tersebut secara manual.
+    const doc = await buildStudentPDF(programKey, studentId);
+    if(!doc){
+      alert('Pustaka pembuat PDF belum termuat. Pastikan perangkat terhubung ke internet, lalu muat ulang halaman dan coba lagi.');
+      return;
+    }
+    const namaFile = (s.namaId||'Peserta').replace(/[^a-zA-Z0-9]+/g,'-');
+    const namaLembagaFile = ((state.meta.lembaga||{}).nama || 'Markaz-Thalabul-Ilmi').replace(/[^a-zA-Z0-9]+/g,'-');
+    doc.save(`Laporan-${namaFile}-${namaLembagaFile}-${state.meta.tanggal || 'laporan'}.pdf`);
+
+    const text = buildStudentReportText(programKey, studentId) + `\n\n(Berkas PDF laporan telah terunduh — mohon lampirkan secara manual pada percakapan WhatsApp ini, karena peramban tidak mengizinkan lampiran otomatis demi keamanan.)`;
     const num = document.getElementById('ssWaNumber').value.replace(/[^0-9]/g,'');
     const url = num
       ? `https://wa.me/${num}?text=${encodeURIComponent(text)}`
@@ -1528,75 +1638,112 @@ document.getElementById('btnWA').addEventListener('click', ()=>{
 });
 
 /* ================= AKSI: UNDUH PDF — SATU KELAS SATU LAPORAN ================= */
+async function buildClassPDF(programKey){
+  if(!window.jspdf) return null;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+  const marginX = 48;
+
+  const p = state.programDefs.find(x=>x.key===programKey);
+  const prog = state.programs[programKey];
+  const sum = programSummary(programKey);
+
+  let y = await drawLetterhead(doc, `Laporan Perkembangan Peserta — ${tgl}`);
+
+  y += 12;
+  await drawAmiriText(doc, `Kelas ${displayName(p)}`, marginX, y, {fontSizePx:15, weight:'700', color:'#141c28'});
+  y += 18;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(140,148,160);
+  doc.text(`Pengampu ${prog.guru || '-'}   ·   ${sum.count} peserta   ·   Rata-rata ${sum.avg}%   ·   Hadir ${sum.counts['Hadir']}   ·   Tidak Hadir ${sum.counts['Tidak Hadir']}`, marginX, y);
+  y += 14;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,157,168);
+  doc.text(`KEPALA MARKAZ  ${state.meta.kepala || '-'}`, marginX, y+16);
+  y += 34;
+
+  // Pra-render semua nama Arab menjadi gambar terlebih dahulu (proses async),
+  // supaya font Arab tampil dengan bentuk huruf yang benar di dalam tabel PDF.
+  const arabicImages = await Promise.all(
+    prog.students.map(s => s.namaAr ? renderArabicToImage(s.namaAr, 16) : Promise.resolve(null))
+  );
+
+  const rows = prog.students.length
+    ? prog.students.map((s,i)=>[i+1, s.namaId||'-', '', s.usia||'-', s.asal||'-', s.materi||'-', s.capaian||'-', s.status, s.catatan||'-'])
+    : [['-','Belum ada data peserta pada kelas ini','','-','-','-','-','-','-']];
+
+  doc.autoTable({
+    startY:y,
+    head:[['No','Nama (ID)','Nama (Arab)','Usia','Asal','Target/Materi','Capaian','Status','Catatan']],
+    body:rows,
+    theme:'plain',
+    styles:{lineColor:[240,242,246], lineWidth:0.75},
+    headStyles:{textColor:[150,157,168], fontSize:7.5, fontStyle:'bold', halign:'left', cellPadding:{top:6,bottom:8,left:6,right:6}, lineWidth:{bottom:1}, lineColor:[210,215,222]},
+    bodyStyles:{fontSize:8.5, textColor:[45,52,64], minCellHeight:22, cellPadding:{top:7,bottom:7,left:6,right:6}, lineWidth:{bottom:0.75}, lineColor:[240,242,246]},
+    alternateRowStyles:{fillColor:[252,253,254]},
+    columnStyles:{0:{cellWidth:18, textColor:[170,176,186]}, 2:{cellWidth:70}, 3:{cellWidth:30}, 4:{cellWidth:55}, 7:{cellWidth:60}},
+    margin:{left:marginX, right:marginX},
+    didDrawCell:(data)=>{
+      if(data.section==='body' && data.column.index===2){
+        const img = arabicImages[data.row.index];
+        if(img){
+          const maxW = data.cell.width - 6;
+          const maxH = data.cell.height - 6;
+          let w = (img.width/img.height) * maxH;
+          let h = maxH;
+          if(w > maxW){ w = maxW; h = (img.height/img.width) * maxW; }
+          const x = data.cell.x + data.cell.width - w - 3;
+          const yPos = data.cell.y + (data.cell.height - h)/2;
+          try{ doc.addImage(img.dataUrl, 'PNG', x, yPos, w, h); }catch(e){ /* lewati jika gagal */ }
+        }
+      }
+    },
+  });
+
+  let footY = doc.internal.pageSize.getHeight() - 40;
+  doc.setFontSize(7.5); doc.setTextColor(180,185,192);
+  doc.text(`Dibuat otomatis melalui Papan Pantau ${(state.meta.lembaga||{}).nama || 'Markaz Thalabul Ilmi'}.`, marginX, footY);
+
+  return doc;
+}
+
+function classPdfFileName(programKey){
+  const p = state.programDefs.find(x=>x.key===programKey);
+  const namaLembagaFile = ((state.meta.lembaga||{}).nama || 'Markaz-Thalabul-Ilmi').replace(/[^a-zA-Z0-9]+/g,'-');
+  return `Laporan-${displayName(p).replace(/[^a-zA-Z0-9]+/g,'-')}-${namaLembagaFile}-${state.meta.tanggal || 'laporan'}.pdf`;
+}
+
 document.getElementById('btnPDF').addEventListener('click', async ()=>{
   try{
-    if(!window.jspdf){
+    const doc = await buildClassPDF(activeProgram);
+    if(!doc){
       alert('Pustaka pembuat PDF belum termuat. Pastikan perangkat terhubung ke internet, lalu muat ulang halaman dan coba lagi.');
       return;
     }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({unit:'pt', format:'a4'});
-    const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+    doc.save(classPdfFileName(activeProgram));
+  }catch(err){
+    alert('PDF otomatis gagal dibuat. Dialog cetak akan dibuka sebagai alternatif.');
+    window.print();
+  }
+});
 
-    const p = state.programDefs.find(x=>x.key===activeProgram);
-    const prog = state.programs[activeProgram];
-    const sum = programSummary(activeProgram);
+/* ================= AKSI: UNDUH PDF KELAS & BUKA WHATSAPP ================= */
+document.getElementById('btnWaPdf').addEventListener('click', async ()=>{
+  try{
+    const doc = await buildClassPDF(activeProgram);
+    if(!doc){
+      alert('Pustaka pembuat PDF belum termuat. Pastikan perangkat terhubung ke internet, lalu muat ulang halaman dan coba lagi.');
+      return;
+    }
+    doc.save(classPdfFileName(activeProgram));
 
-    let y = drawLetterhead(doc, `Laporan Perkembangan Peserta — Kelas ${displayName(p)}  —  ${tgl}`);
-
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
-    doc.text(`Kepala Markaz: ${state.meta.kepala || '-'}`, 40, y);
-    y += 16;
-
-    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(15,51,105);
-    doc.text(`${displayName(p)}`, 40, y);
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(100,100,100);
-    doc.text(`Pengampu: ${prog.guru || '-'}   |   ${sum.count} peserta   |   Rata-rata: ${sum.avg}%   |   Hadir: ${sum.counts['Hadir']}   |   Tidak Hadir: ${sum.counts['Tidak Hadir']}`, 40, y+13);
-    y += 26;
-
-    // Pra-render semua nama Arab menjadi gambar terlebih dahulu (proses async),
-    // supaya font Arab tampil dengan bentuk huruf yang benar di dalam tabel PDF.
-    const arabicImages = await Promise.all(
-      prog.students.map(s => s.namaAr ? renderArabicToImage(s.namaAr, 16) : Promise.resolve(null))
-    );
-
-    const rows = prog.students.length
-      ? prog.students.map((s,i)=>[i+1, s.namaId||'-', '', s.usia||'-', s.asal||'-', s.materi||'-', s.capaian||'-', s.persen+'%', s.status, s.catatan||'-'])
-      : [['-','Belum ada data peserta pada kelas ini','','-','-','-','-','-','-','-']];
-
-    doc.autoTable({
-      startY:y,
-      head:[['No','Nama (ID)','Nama (Arab)','Usia','Asal','Target/Materi','Capaian','%','Status','Catatan']],
-      body:rows,
-      theme:'grid',
-      headStyles:{fillColor:[15,51,105], textColor:255, fontSize:8},
-      bodyStyles:{fontSize:8, textColor:40, minCellHeight:20},
-      alternateRowStyles:{fillColor:[242,244,248]},
-      columnStyles:{0:{cellWidth:18}, 2:{cellWidth:70}, 3:{cellWidth:30}, 4:{cellWidth:55}, 7:{cellWidth:28}, 8:{cellWidth:60}},
-      margin:{left:40, right:40},
-      didDrawCell:(data)=>{
-        if(data.section==='body' && data.column.index===2){
-          const img = arabicImages[data.row.index];
-          if(img){
-            const maxW = data.cell.width - 6;
-            const maxH = data.cell.height - 6;
-            let w = (img.width/img.height) * maxH;
-            let h = maxH;
-            if(w > maxW){ w = maxW; h = (img.height/img.width) * maxW; }
-            const x = data.cell.x + data.cell.width - w - 3;
-            const yPos = data.cell.y + (data.cell.height - h)/2;
-            try{ doc.addImage(img.dataUrl, 'PNG', x, yPos, w, h); }catch(e){ /* lewati jika gagal */ }
-          }
-        }
-      },
-    });
-
-    let footY = doc.lastAutoTable.finalY + 26;
-    doc.setFontSize(8); doc.setTextColor(140,140,140);
-    doc.text(`Dibuat secara otomatis melalui Papan Pantau ${(state.meta.lembaga||{}).nama || 'Markaz Thalabul Ilmi'}.`, 40, footY);
-
-    const namaLembagaFile2 = ((state.meta.lembaga||{}).nama || 'Markaz-Thalabul-Ilmi').replace(/[^a-zA-Z0-9]+/g,'-');
-    doc.save(`Laporan-${displayName(p).replace(/[^a-zA-Z0-9]+/g,'-')}-${namaLembagaFile2}-${state.meta.tanggal || 'laporan'}.pdf`);
+    const text = buildReportText(activeProgram) + `\n\n(Berkas PDF laporan telah terunduh — mohon lampirkan secara manual pada percakapan WhatsApp ini, karena peramban tidak mengizinkan lampiran otomatis demi keamanan.)`;
+    const num = document.getElementById('waNumber').value.replace(/[^0-9]/g,'');
+    const url = num
+      ? `https://wa.me/${num}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
   }catch(err){
     alert('PDF otomatis gagal dibuat. Dialog cetak akan dibuka sebagai alternatif.');
     window.print();
