@@ -1409,33 +1409,33 @@ async function drawLetterhead(doc, subtitleLine){
   const logoSrc = lb.logo || LETTERHEAD_IMG;
   const marginX = 48;
 
-  const logoSize = 34;
+  const logoSize = 46;
   let textX = marginX;
   try{
     doc.addImage(logoSrc, 'PNG', marginX, 40, logoSize, logoSize);
-    textX = marginX + logoSize + 14;
+    textX = marginX + logoSize + 16;
   }catch(e){ /* lanjut tanpa logo jika gagal dimuat */ }
 
-  await drawAmiriText(doc, namaLembaga, textX, 58, {fontSizePx:13, weight:'400', color:'#19232f'});
+  await drawAmiriText(doc, namaLembaga, textX, 62, {fontSizePx:17, weight:'700', color:'#19232f'});
 
   if(subGabungan){
-    await drawAmiriText(doc, subGabungan, textX, 71, {fontSizePx:8.5, weight:'400', color:'#8c94a0'});
+    await drawAmiriText(doc, subGabungan, textX, 78, {fontSizePx:9.5, weight:'400', color:'#8c94a0'});
   }
 
   // Tanggal / label kecil di kanan atas, sejajar nama lembaga
   const tglOnly = subtitleLine.split('—').pop().trim();
-  await drawAmiriText(doc, tglOnly, pageWidth - marginX, 58, {fontSizePx:8.5, weight:'400', color:'#8c94a0', align:'right'});
+  await drawAmiriText(doc, tglOnly, pageWidth - marginX, 62, {fontSizePx:9.5, weight:'400', color:'#8c94a0', align:'right'});
 
   let y = 40 + logoSize + 26;
 
   // Garis aksen tipis alih-alih blok warna tebal
   doc.setDrawColor(225,229,235); doc.setLineWidth(0.75);
   doc.line(marginX, y, pageWidth - marginX, y);
-  y += 26;
+  y += 28;
 
   // Judul laporan, ringan namun jelas, dengan aksen warna tipis di label kecil di atasnya
-  await drawAmiriText(doc, 'LAPORAN PERKEMBANGAN PESERTA', marginX, y, {fontSizePx:8, weight:'700', color:'#0f3369'});
-  y += 20;
+  await drawAmiriText(doc, 'LAPORAN PERKEMBANGAN PESERTA', marginX, y, {fontSizePx:10, weight:'700', color:'#0f3369'});
+  y += 22;
 
   return y;
 }
@@ -1473,7 +1473,7 @@ async function buildStudentPDF(programKey, studentId){
   y += 20;
 
   // Baris meta ringan: kelas/program sebagai label aksen kecil, sisanya teks abu-abu netral
-  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(140,148,160);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(140,148,160);
   doc.text(`${displayName(p)}   ·   Pengampu ${prog.guru || '-'}   ·   ${s.usia || '-'} tahun   ·   ${s.asal || '-'}`, marginX, y);
   y += 30;
 
@@ -1486,9 +1486,9 @@ async function buildStudentPDF(programKey, studentId){
   async function infoCard(x, label, value){
     doc.setDrawColor(230,233,238); doc.setLineWidth(0.75);
     doc.line(x, cardY, x, cardY + cardH); // garis vertikal tipis di kiri sebagai aksen, bukan kotak penuh
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,157,168);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(150,157,168);
     doc.text(label.toUpperCase(), x + 12, cardY + 16);
-    await drawAmiriText(doc, value || '-', x + 12, cardY + 32, {fontSizePx:11.5, weight:'700', color:'#19232f'});
+    await drawAmiriText(doc, value || '-', x + 12, cardY + 32, {fontSizePx:12, weight:'700', color:'#19232f'});
   }
 
   await infoCard(marginX, 'Target / Materi', s.materi);
@@ -1499,16 +1499,16 @@ async function buildStudentPDF(programKey, studentId){
   doc.line(marginX, y, pageWidth - marginX, y);
   y += 24;
 
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,157,168);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(150,157,168);
   doc.text('STATUS', marginX, y);
-  await drawAmiriText(doc, s.status || '-', marginX + 70, y - 3, {fontSizePx:10.5, weight:'700', color:'#19232f'});
+  await drawAmiriText(doc, s.status || '-', marginX + 70, y - 3, {fontSizePx:11, weight:'700', color:'#19232f'});
   y += 26;
 
   if(s.catatan){
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,157,168);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(150,157,168);
     doc.text('CATATAN PENGAJAR', marginX, y);
     y += 14;
-    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(70,78,90);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(70,78,90);
     const catatanLines = doc.splitTextToSize(s.catatan, pageWidth - marginX*2);
     doc.text(catatanLines, marginX, y);
     y += catatanLines.length * 13 + 10;
@@ -1519,12 +1519,12 @@ async function buildStudentPDF(programKey, studentId){
   doc.setDrawColor(240,242,246); doc.setLineWidth(0.75);
   doc.line(marginX, y, pageWidth - marginX, y);
   y += 24;
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,157,168);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(150,157,168);
   doc.text('KEPALA MARKAZ', marginX, y);
-  await drawAmiriText(doc, state.meta.kepala || '-', marginX + 90, y - 3, {fontSizePx:10, weight:'700', color:'#19232f'});
+  await drawAmiriText(doc, state.meta.kepala || '-', marginX + 90, y - 3, {fontSizePx:10.5, weight:'700', color:'#19232f'});
 
   let footY = doc.internal.pageSize.getHeight() - 40;
-  doc.setFontSize(7.5); doc.setTextColor(180,185,192);
+  doc.setFontSize(8); doc.setTextColor(180,185,192);
   doc.text(`Dibuat otomatis melalui Papan Pantau ${(state.meta.lembaga||{}).nama || 'Markaz Thalabul Ilmi'}.`, marginX, footY);
   return doc;
 }
@@ -1655,11 +1655,11 @@ async function buildClassPDF(programKey){
   await drawAmiriText(doc, `Kelas ${displayName(p)}`, marginX, y, {fontSizePx:15, weight:'700', color:'#141c28'});
   y += 18;
 
-  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(140,148,160);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(140,148,160);
   doc.text(`Pengampu ${prog.guru || '-'}   ·   ${sum.count} peserta   ·   Rata-rata ${sum.avg}%   ·   Hadir ${sum.counts['Hadir']}   ·   Tidak Hadir ${sum.counts['Tidak Hadir']}`, marginX, y);
   y += 14;
 
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,157,168);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(150,157,168);
   doc.text(`KEPALA MARKAZ  ${state.meta.kepala || '-'}`, marginX, y+16);
   y += 34;
 
@@ -1679,8 +1679,8 @@ async function buildClassPDF(programKey){
     body:rows,
     theme:'plain',
     styles:{lineColor:[240,242,246], lineWidth:0.75},
-    headStyles:{textColor:[150,157,168], fontSize:7.5, fontStyle:'bold', halign:'left', cellPadding:{top:6,bottom:8,left:6,right:6}, lineWidth:{bottom:1}, lineColor:[210,215,222]},
-    bodyStyles:{fontSize:8.5, textColor:[45,52,64], minCellHeight:22, cellPadding:{top:7,bottom:7,left:6,right:6}, lineWidth:{bottom:0.75}, lineColor:[240,242,246]},
+    headStyles:{textColor:[150,157,168], fontSize:8, fontStyle:'bold', halign:'left', cellPadding:{top:6,bottom:8,left:6,right:6}, lineWidth:{bottom:1}, lineColor:[210,215,222]},
+    bodyStyles:{fontSize:9, textColor:[45,52,64], minCellHeight:22, cellPadding:{top:7,bottom:7,left:6,right:6}, lineWidth:{bottom:0.75}, lineColor:[240,242,246]},
     alternateRowStyles:{fillColor:[252,253,254]},
     columnStyles:{0:{cellWidth:18, textColor:[170,176,186]}, 2:{cellWidth:70}, 3:{cellWidth:30}, 4:{cellWidth:55}, 7:{cellWidth:60}},
     margin:{left:marginX, right:marginX},
@@ -1702,7 +1702,7 @@ async function buildClassPDF(programKey){
   });
 
   let footY = doc.internal.pageSize.getHeight() - 40;
-  doc.setFontSize(7.5); doc.setTextColor(180,185,192);
+  doc.setFontSize(8); doc.setTextColor(180,185,192);
   doc.text(`Dibuat otomatis melalui Papan Pantau ${(state.meta.lembaga||{}).nama || 'Markaz Thalabul Ilmi'}.`, marginX, footY);
 
   return doc;
