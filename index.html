@@ -461,7 +461,7 @@
 
 <div id="loginOverlay" style="position:fixed; inset:0; z-index:9999; background:linear-gradient(180deg,#0a2650,#0f3369); display:flex; align-items:center; justify-content:center; padding:20px;">
   <div style="background:#ffffff; border-radius:16px; padding:32px 28px; max-width:340px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,.3); text-align:center;">
-    <div style="font-family:'Amiri',serif; font-size:20px; font-weight:700; color:#0f3369; margin-bottom:6px;">Markaz Thalabul Ilmi</div>
+    <div id="loginTitle" style="font-family:'Amiri',serif; font-size:20px; font-weight:700; color:#0f3369; margin-bottom:6px;">Markaz Thalabul Ilmi</div>
     <div style="font-size:12.5px; color:#65707f; margin-bottom:20px;">Masukkan kata sandi untuk membuka papan pantau</div>
     <input id="loginPassword" type="password" placeholder="Kata sandi" style="width:100%; padding:10px 12px; border:1px solid #e0e4ea; border-radius:8px; font-family:'Amiri',serif; font-size:14px; margin-bottom:12px; box-sizing:border-box;">
     <button id="loginBtn" style="width:100%; padding:11px; background:#0f3369; color:#fff; border:none; border-radius:8px; font-family:'Amiri',serif; font-size:14px; font-weight:700; cursor:pointer;">Masuk</button>
@@ -490,7 +490,8 @@
       <input id="metaKepala" placeholder="Nama kepala markaz / musyrif" />
       <label>Tanggal Laporan</label>
       <input id="metaTanggal" type="date" />
-      <button id="logoutBtn" style="margin-top:10px; width:100%; background:rgba(255,255,255,.08); border:1px solid rgba(195,204,215,.35); color:#cdd6e4; font-family:'Amiri',serif; font-size:12px; padding:6px 0; border-radius:6px; cursor:pointer;">🔒 Keluar</button>
+      <button id="settingsBtn" style="margin-top:10px; width:100%; background:rgba(255,255,255,.08); border:1px solid rgba(195,204,215,.35); color:#cdd6e4; font-family:'Amiri',serif; font-size:12px; padding:6px 0; border-radius:6px; cursor:pointer;">⚙️ Pengaturan Lembaga</button>
+      <button id="logoutBtn" style="margin-top:8px; width:100%; background:rgba(255,255,255,.08); border:1px solid rgba(195,204,215,.35); color:#cdd6e4; font-family:'Amiri',serif; font-size:12px; padding:6px 0; border-radius:6px; cursor:pointer;">🔒 Keluar</button>
     </div>
   </div>
   <div class="arch-row" id="archRow"></div>
@@ -578,6 +579,39 @@
   </div>
 </div>
 
+<div id="settingsModalOverlay" class="modal-overlay2">
+  <div class="modal-box2" style="max-width:440px;">
+    <h3>⚙️ Pengaturan Lembaga</h3>
+    <label>Nama Lembaga</label>
+    <input id="settingsNama" placeholder="Contoh: Markaz Thalabul Ilmi">
+    <label>Sub-nama / Tagline (opsional)</label>
+    <input id="settingsSub" placeholder="Contoh: Pusat Pengembangan Ilmu & Keterampilan">
+    <label>Alamat (opsional)</label>
+    <input id="settingsAlamat" placeholder="Contoh: Jakarta Barat, DKI Jakarta">
+    <label>Logo Lembaga</label>
+    <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
+      <div style="width:56px; height:56px; border:1px solid var(--line); border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#fff; flex-shrink:0;">
+        <img id="settingsLogoPreview" src="" alt="Pratinjau logo" style="max-width:100%; max-height:100%; object-fit:contain;">
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <button type="button" class="mbtn" id="settingsLogoUploadBtn" style="background:var(--panel-tint); color:var(--navy);">📤 Unggah Logo</button>
+        <button type="button" class="mbtn" id="settingsLogoResetBtn" style="background:var(--panel-tint); color:var(--muted);">↺ Kembalikan Logo Bawaan</button>
+      </div>
+      <input type="file" id="settingsLogoFileInput" accept="image/*" style="display:none;">
+    </div>
+    <div style="font-size:11px; color:var(--muted); margin-top:10px; line-height:1.4;">
+      Perubahan ini akan diterapkan pada judul halaman, kop laporan PDF, dan subjek pesan WhatsApp/Surel di seluruh papan pantau.
+    </div>
+    <div class="modal-actions2">
+      <div></div>
+      <div class="modal-actions2-right">
+        <button class="mbtn mbtn-cancel" id="settingsCancelBtn">Batal</button>
+        <button class="mbtn mbtn-save" id="settingsSaveBtn">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ================= DATA MODEL ================= */
 /* ================= GAMBAR KOP SURAT RESMI (LETTERHEAD) UNTUK PDF ================= */
@@ -658,8 +692,23 @@ function makeClassKey(name){
   return key;
 }
 
+// Logo bawaan diambil dari elemen <img> di header (agar tidak menduplikasi string base64 raksasa di JS).
+// Ini menjadi nilai awal state.meta.lembaga.logo, dan bisa diganti pengguna lewat Pengaturan Lembaga.
+const DEFAULT_LOGO_DATA_URL = (document.querySelector('.brand-logo img') || {}).getAttribute
+  ? document.querySelector('.brand-logo img').getAttribute('src')
+  : "";
+
 let state = {
-  meta:{ kepala:"", tanggal: new Date().toISOString().slice(0,10) },
+  meta:{
+    kepala:"",
+    tanggal: new Date().toISOString().slice(0,10),
+    lembaga:{
+      nama:"Markaz Thalabul Ilmi",
+      sub:"Pusat Pengembangan Ilmu & Keterampilan",
+      alamat:"Jakarta Barat, DKI Jakarta",
+      logo: DEFAULT_LOGO_DATA_URL
+    }
+  },
   programDefs: JSON.parse(JSON.stringify(DEFAULT_PROGRAM_DEFS)),
   programs:{}
 };
@@ -718,6 +767,16 @@ window.addEventListener('pagehide', ()=>{ clearTimeout(saveTimer); saveState(); 
 // - setiap kelas di programDefs punya entri di programs
 // - activeProgram menunjuk ke kelas yang benar-benar ada
 function normalizeState(){
+  // Data lama (sebelum fitur Pengaturan Lembaga) mungkin belum punya state.meta.lembaga.
+  if(!state.meta) state.meta = {};
+  if(!state.meta.lembaga || typeof state.meta.lembaga !== 'object'){
+    state.meta.lembaga = {
+      nama:"Markaz Thalabul Ilmi",
+      sub:"Pusat Pengembangan Ilmu & Keterampilan",
+      alamat:"Jakarta Barat, DKI Jakarta",
+      logo: DEFAULT_LOGO_DATA_URL
+    };
+  }
   if(!Array.isArray(state.programDefs) || state.programDefs.length===0){
     // Data lama: rekonstruksi programDefs dari kunci-kunci yang ada di state.programs,
     // memakai nama/deskripsi bawaan jika cocok, atau nama otomatis jika tidak dikenal.
@@ -1101,11 +1160,103 @@ function renderDockLabel(){
 }
 
 function renderAll(){
+  applyLembagaBranding();
   renderOverview();
   renderSummaryStrip();
   renderPanel();
   renderDockLabel();
 }
+
+/* ================= PENGATURAN LEMBAGA (NAMA / SUB / ALAMAT / LOGO) ================= */
+// Menerapkan identitas lembaga yang tersimpan di state.meta.lembaga ke seluruh tampilan:
+// judul tab browser, header (nama+sub+logo), dan modal login.
+function applyLembagaBranding(){
+  const l = state.meta.lembaga || {};
+  const nama = l.nama || 'Markaz Thalabul Ilmi';
+  const sub = l.sub || '';
+  const alamat = l.alamat || '';
+  const subGabungan = [sub, alamat].filter(Boolean).join(' — ');
+
+  document.title = `${nama} — Dashboard`;
+
+  const brandNameEl = document.querySelector('.brand-name');
+  if(brandNameEl) brandNameEl.textContent = nama;
+
+  const brandSubEl = document.querySelector('.brand-sub');
+  if(brandSubEl) brandSubEl.textContent = subGabungan;
+
+  const brandLogoImgEl = document.querySelector('.brand-logo img');
+  if(brandLogoImgEl && l.logo){
+    brandLogoImgEl.src = l.logo;
+    brandLogoImgEl.alt = `Lambang ${nama}`;
+  }
+
+  const loginTitleEl = document.getElementById('loginTitle');
+  if(loginTitleEl) loginTitleEl.textContent = nama;
+}
+
+/* ================= MODAL PENGATURAN LEMBAGA ================= */
+function openSettingsModal(){
+  const l = state.meta.lembaga || {};
+  document.getElementById('settingsNama').value = l.nama || '';
+  document.getElementById('settingsSub').value = l.sub || '';
+  document.getElementById('settingsAlamat').value = l.alamat || '';
+  document.getElementById('settingsLogoPreview').src = l.logo || DEFAULT_LOGO_DATA_URL;
+  document.getElementById('settingsModalOverlay').style.display = 'flex';
+}
+function closeSettingsModal(){
+  document.getElementById('settingsModalOverlay').style.display = 'none';
+}
+document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
+document.getElementById('settingsCancelBtn').addEventListener('click', closeSettingsModal);
+document.getElementById('settingsModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'settingsModalOverlay') closeSettingsModal();
+});
+
+document.getElementById('settingsLogoUploadBtn').addEventListener('click', ()=>{
+  document.getElementById('settingsLogoFileInput').click();
+});
+document.getElementById('settingsLogoFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    alert('Berkas yang dipilih bukan gambar. Silakan pilih berkas gambar (PNG/JPG).');
+    e.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    document.getElementById('settingsLogoPreview').src = ev.target.result;
+    // Simpan sementara di dataset preview agar tombol Simpan tahu logo baru ini
+    document.getElementById('settingsLogoPreview').dataset.pending = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+document.getElementById('settingsLogoResetBtn').addEventListener('click', ()=>{
+  document.getElementById('settingsLogoPreview').src = DEFAULT_LOGO_DATA_URL;
+  document.getElementById('settingsLogoPreview').dataset.pending = DEFAULT_LOGO_DATA_URL;
+});
+
+document.getElementById('settingsSaveBtn').addEventListener('click', ()=>{
+  const namaBaru = document.getElementById('settingsNama').value.trim();
+  if(!namaBaru){
+    alert('Nama lembaga tidak boleh kosong.');
+    return;
+  }
+  const preview = document.getElementById('settingsLogoPreview');
+  const logoBaru = preview.dataset.pending || preview.src || DEFAULT_LOGO_DATA_URL;
+
+  state.meta.lembaga = {
+    nama: namaBaru,
+    sub: document.getElementById('settingsSub').value.trim(),
+    alamat: document.getElementById('settingsAlamat').value.trim(),
+    logo: logoBaru
+  };
+  applyLembagaBranding();
+  saveState();
+  closeSettingsModal();
+});
 
 /* ================= BIDANG META ================= */
 document.getElementById('metaKepala').addEventListener('input', e=>{ state.meta.kepala=e.target.value; queueSave(); });
@@ -1118,12 +1269,13 @@ function buildReportText(programKey){
   const sum = programSummary(programKey);
   const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
 
+  const lb = state.meta.lembaga || {};
   let lines = [];
   lines.push(`Assalamu'alaikum warahmatullahi wabarakatuh.`);
   lines.push('');
-  lines.push(`*MARKAZ THALABUL ILMI*`);
-  lines.push(`Pusat Pengembangan Ilmu & Keterampilan`);
-  lines.push(`Jakarta Barat, DKI Jakarta`);
+  lines.push(`*${(lb.nama || 'Markaz Thalabul Ilmi').toUpperCase()}*`);
+  if(lb.sub) lines.push(lb.sub);
+  if(lb.alamat) lines.push(lb.alamat);
   lines.push('');
   lines.push(`Laporan Perkembangan Peserta — Kelas ${displayName(p)}`);
   lines.push('');
@@ -1150,7 +1302,7 @@ function buildReportText(programKey){
   lines.push('');
   lines.push(`Baarakallahufiikum.`);
   lines.push('');
-  lines.push(`_Laporan ini dibuat otomatis melalui Papan Pantau Markaz Thalabul Ilmi._`);
+  lines.push(`_Laporan ini dibuat otomatis melalui Papan Pantau ${lb.nama || 'Markaz Thalabul Ilmi'}._`);
   return lines.join('\n');
 }
 
@@ -1162,12 +1314,13 @@ function buildStudentReportText(programKey, studentId){
   const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
   if(!s) return '';
 
+  const lb = state.meta.lembaga || {};
   let lines = [];
   lines.push(`Assalamu'alaikum warahmatullahi wabarakatuh.`);
   lines.push('');
-  lines.push(`*MARKAZ THALABUL ILMI*`);
-  lines.push(`Pusat Pengembangan Ilmu & Keterampilan`);
-  lines.push(`Jakarta Barat, DKI Jakarta`);
+  lines.push(`*${(lb.nama || 'Markaz Thalabul Ilmi').toUpperCase()}*`);
+  if(lb.sub) lines.push(lb.sub);
+  if(lb.alamat) lines.push(lb.alamat);
   lines.push('');
   lines.push(`Laporan Perkembangan Peserta`);
   lines.push('');
@@ -1190,25 +1343,37 @@ function buildStudentReportText(programKey, studentId){
   lines.push('');
   lines.push(`Baarakallahufiikum.`);
   lines.push('');
-  lines.push(`_Laporan ini dibuat otomatis melalui Papan Pantau Markaz Thalabul Ilmi._`);
+  lines.push(`_Laporan ini dibuat otomatis melalui Papan Pantau ${lb.nama || 'Markaz Thalabul Ilmi'}._`);
   return lines.join('\n');
 }
 
 // Menggambar kop surat resmi (logo, nama lembaga, lokasi) di posisi atas dokumen.
 // Mengembalikan koordinat Y setelah kop surat selesai digambar.
 function drawLetterhead(doc, subtitleLine){
-  // Kop surat resmi: gambar logo + nama lembaga dari template resmi Markaz Thalabul Ilmi,
-  // diletakkan di tengah atas halaman seperti kop surat cetak yang sesungguhnya.
-  const imgW = 200; // lebar gambar kop pada PDF (pt)
-  const imgH = imgW * (250/520); // menjaga rasio asli gambar (520x250)
+  // Kop surat: logo lembaga (dari Pengaturan Lembaga, jika ada) + nama & sub-nama lembaga
+  // digambar sebagai teks agar selalu mengikuti identitas lembaga yang tersimpan di state,
+  // bukan lagi mengandalkan gambar kop gabungan statis.
+  const lb = state.meta.lembaga || {};
+  const namaLembaga = lb.nama || 'Markaz Thalabul Ilmi';
+  const subGabungan = [lb.sub, lb.alamat].filter(Boolean).join('  —  ');
   const pageWidth = doc.internal.pageSize.getWidth();
-  const imgX = (pageWidth - imgW) / 2;
-  try{ doc.addImage(LETTERHEAD_IMG, 'PNG', imgX, 24, imgW, imgH); }catch(e){ /* lanjut tanpa kop jika gagal */ }
+  const logoSrc = lb.logo || LETTERHEAD_IMG;
 
-  let y = 24 + imgH + 10;
-  doc.setFontSize(9.5); doc.setTextColor(90,90,90); doc.setFont('helvetica','normal');
-  doc.text('Pusat Pengembangan Ilmu & Keterampilan  —  Jakarta Barat, DKI Jakarta', pageWidth/2, y, {align:'center'});
+  const logoSize = 46; // sisi logo persegi pada PDF (pt)
+  const logoX = (pageWidth - logoSize) / 2;
+  try{ doc.addImage(logoSrc, 'PNG', logoX, 24, logoSize, logoSize); }catch(e){ /* lanjut tanpa logo jika gagal dimuat */ }
+
+  let y = 24 + logoSize + 14;
+  doc.setFontSize(14); doc.setTextColor(15,51,105); doc.setFont('helvetica','bold');
+  doc.text(namaLembaga.toUpperCase(), pageWidth/2, y, {align:'center'});
   y += 16;
+
+  if(subGabungan){
+    doc.setFontSize(9.5); doc.setTextColor(90,90,90); doc.setFont('helvetica','normal');
+    doc.text(subGabungan, pageWidth/2, y, {align:'center'});
+    y += 16;
+  }
+
   doc.setFontSize(10.5); doc.setTextColor(30,30,30); doc.setFont('helvetica','bold');
   doc.text(subtitleLine, pageWidth/2, y, {align:'center'});
   y += 14;
@@ -1273,7 +1438,7 @@ async function buildStudentPDF(programKey, studentId){
 
   let footY = doc.lastAutoTable.finalY + 30;
   doc.setFontSize(8); doc.setTextColor(140,140,140);
-  doc.text('Dibuat secara otomatis melalui Papan Pantau Markaz Thalabul Ilmi.', 40, footY);
+  doc.text(`Dibuat secara otomatis melalui Papan Pantau ${(state.meta.lembaga||{}).nama || 'Markaz Thalabul Ilmi'}.`, 40, footY);
   return doc;
 }
 
@@ -1293,7 +1458,8 @@ async function openStudentSendModal(programKey, studentId, action){
       return;
     }
     const namaFile = (s.namaId||'Peserta').replace(/[^a-zA-Z0-9]+/g,'-');
-    doc.save(`Laporan-${namaFile}-Markaz-Thalabul-Ilmi-${state.meta.tanggal || 'laporan'}.pdf`);
+    const namaLembagaFile = ((state.meta.lembaga||{}).nama || 'Markaz-Thalabul-Ilmi').replace(/[^a-zA-Z0-9]+/g,'-');
+    doc.save(`Laporan-${namaFile}-${namaLembagaFile}-${state.meta.tanggal || 'laporan'}.pdf`);
     return;
   }
 
@@ -1344,7 +1510,7 @@ document.getElementById('ssConfirm').addEventListener('click', ()=>{
   } else if(action==='mail'){
     const to = document.getElementById('ssMailTo').value.trim();
     const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
-    const subject = `Laporan Perkembangan Peserta - ${s.namaId||'Peserta'} - Markaz Thalabul Ilmi - ${tgl}`;
+    const subject = `Laporan Perkembangan Peserta - ${s.namaId||'Peserta'} - ${(state.meta.lembaga||{}).nama || 'Markaz Thalabul Ilmi'} - ${tgl}`;
     const body = buildStudentReportText(programKey, studentId) + `\n\n(Mohon lampirkan berkas PDF hasil unduhan tombol 📄 pada baris peserta ini secara manual pada surel ini, karena peramban tidak mengizinkan lampiran otomatis demi keamanan.)`;
     const url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = url;
@@ -1427,9 +1593,10 @@ document.getElementById('btnPDF').addEventListener('click', async ()=>{
 
     let footY = doc.lastAutoTable.finalY + 26;
     doc.setFontSize(8); doc.setTextColor(140,140,140);
-    doc.text('Dibuat secara otomatis melalui Papan Pantau Markaz Thalabul Ilmi.', 40, footY);
+    doc.text(`Dibuat secara otomatis melalui Papan Pantau ${(state.meta.lembaga||{}).nama || 'Markaz Thalabul Ilmi'}.`, 40, footY);
 
-    doc.save(`Laporan-${displayName(p).replace(/[^a-zA-Z0-9]+/g,'-')}-Markaz-Thalabul-Ilmi-${state.meta.tanggal || 'laporan'}.pdf`);
+    const namaLembagaFile2 = ((state.meta.lembaga||{}).nama || 'Markaz-Thalabul-Ilmi').replace(/[^a-zA-Z0-9]+/g,'-');
+    doc.save(`Laporan-${displayName(p).replace(/[^a-zA-Z0-9]+/g,'-')}-${namaLembagaFile2}-${state.meta.tanggal || 'laporan'}.pdf`);
   }catch(err){
     alert('PDF otomatis gagal dibuat. Dialog cetak akan dibuka sebagai alternatif.');
     window.print();
@@ -1441,7 +1608,7 @@ document.getElementById('btnMail').addEventListener('click', ()=>{
   const to = document.getElementById('mailTo').value.trim();
   const p = state.programDefs.find(x=>x.key===activeProgram);
   const tgl = new Date(state.meta.tanggal || Date.now()).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
-  const subject = `Laporan Perkembangan Peserta - Kelas ${displayName(p)} - Markaz Thalabul Ilmi - ${tgl}`;
+  const subject = `Laporan Perkembangan Peserta - Kelas ${displayName(p)} - ${(state.meta.lembaga||{}).nama || 'Markaz Thalabul Ilmi'} - ${tgl}`;
   const body = buildReportText(activeProgram) + `\n\n(Mohon lampirkan berkas PDF hasil unduhan "Unduh Laporan PDF" secara manual pada surel ini, karena peramban tidak mengizinkan lampiran otomatis demi keamanan.)`;
   const url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.location.href = url;
@@ -1594,7 +1761,8 @@ document.getElementById('btnBackup').addEventListener('click', ()=>{
   const a = document.createElement('a');
   const tgl = new Date(state.meta.tanggal || Date.now()).toISOString().split('T')[0];
   a.href = url;
-  a.download = `Cadangan-Data-Markaz-Thalabul-Ilmi-${tgl}.json`;
+  const namaLembagaFileBackup = ((state.meta.lembaga||{}).nama || 'Markaz-Thalabul-Ilmi').replace(/[^a-zA-Z0-9]+/g,'-');
+  a.download = `Cadangan-Data-${namaLembagaFileBackup}-${tgl}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
