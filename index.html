@@ -333,6 +333,7 @@
   .col-no{width:32px; text-align:center; color:var(--muted); font-weight:600;}
   .col-usia{width:56px;}
   .col-asal{width:100px;}
+  .col-wa{width:130px;}
   .col-persen{width:100px;}
   .col-status{width:140px;}
   .col-aksi{width:40px; text-align:center;}
@@ -541,7 +542,7 @@
   <div class="modal-box">
     <div class="modal-title" id="ssTitle">Kirim Laporan Peserta</div>
     <div class="modal-field" id="ssWaField">
-      <label>Nomor WhatsApp Tujuan (opsional)</label>
+      <label>Nomor WhatsApp Tujuan (terisi otomatis dari data peserta jika ada)</label>
       <input id="ssWaNumber" placeholder="Contoh: 6281234567890">
     </div>
     <div class="modal-field" id="ssMailField">
@@ -958,6 +959,7 @@ function renderPanel(){
       <td><input type="text" class="arabic-input" data-field="namaAr" value="${escapeAttr(s.namaAr)}" placeholder="الاسم"></td>
       <td class="col-usia"><input type="number" min="0" data-field="usia" value="${s.usia ?? ''}" placeholder="th"></td>
       <td class="col-asal"><input type="text" data-field="asal" value="${escapeAttr(s.asal)}" placeholder="Kota asal"></td>
+      <td class="col-wa"><input type="text" inputmode="tel" data-field="wa" value="${escapeAttr(s.wa)}" placeholder="62812xxxxxxx"></td>
       <td><input type="text" data-field="materi" value="${escapeAttr(s.materi)}" placeholder="Target / materi"></td>
       <td><input type="text" data-field="capaian" value="${escapeAttr(s.capaian)}" placeholder="Capaian saat ini"></td>
       <td class="col-status">
@@ -1006,6 +1008,7 @@ function renderPanel(){
               <th>Nama (Arab)</th>
               <th class="col-usia">Usia</th>
               <th class="col-asal">Asal</th>
+              <th class="col-wa">No. WhatsApp</th>
               <th>Target / Materi</th>
               <th>Capaian</th>
               <th class="col-status">Status</th>
@@ -1014,7 +1017,7 @@ function renderPanel(){
               <th class="col-aksi"></th>
             </tr>
           </thead>
-          <tbody id="studentBody">${rowsHtml || `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:22px;">Belum ada data peserta. Klik "Tambah Peserta" untuk mulai mengisi.</td></tr>`}</tbody>
+          <tbody id="studentBody">${rowsHtml || `<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:22px;">Belum ada data peserta. Klik "Tambah Peserta" untuk mulai mengisi.</td></tr>`}</tbody>
         </table>
       </div>
       <div class="panel-foot">
@@ -1034,7 +1037,7 @@ function renderPanel(){
   });
   document.getElementById('addStudentBtn').addEventListener('click', ()=>{
     const newId = crypto.randomUUID();
-    prog.students.push({id:newId, namaId:'', namaAr:'', usia:'', asal:'', materi:'', capaian:'', persen:0, status:'Hadir', catatan:''});
+    prog.students.push({id:newId, namaId:'', namaAr:'', usia:'', asal:'', wa:'', materi:'', capaian:'', persen:0, status:'Hadir', catatan:''});
     renderAll(); saveState();
     const newRow = document.querySelector(`tr[data-id="${newId}"] input[data-field="namaId"]`);
     if(newRow) newRow.focus();
@@ -1048,7 +1051,7 @@ function renderPanel(){
     for(let i=0;i<n;i++){
       const id = crypto.randomUUID();
       if(i===0) firstNewId = id;
-      prog.students.push({id, namaId:'', namaAr:'', usia:'', asal:'', materi:'', capaian:'', persen:0, status:'Hadir', catatan:''});
+      prog.students.push({id, namaId:'', namaAr:'', usia:'', asal:'', wa:'', materi:'', capaian:'', persen:0, status:'Hadir', catatan:''});
     }
     renderAll(); saveState();
     const newRow = document.querySelector(`tr[data-id="${firstNewId}"] input[data-field="namaId"]`);
@@ -1305,7 +1308,7 @@ async function openStudentSendModal(programKey, studentId, action){
   if(action==='wa'){
     waField.style.display='flex'; mailField.style.display='none';
     confirmBtn.textContent = '📲 Kirim ke WhatsApp';
-    document.getElementById('ssWaNumber').value = '';
+    document.getElementById('ssWaNumber').value = s.wa || '';
   } else if(action==='mail'){
     waField.style.display='none'; mailField.style.display='flex';
     confirmBtn.textContent = '✉️ Buka di Aplikasi Surel';
